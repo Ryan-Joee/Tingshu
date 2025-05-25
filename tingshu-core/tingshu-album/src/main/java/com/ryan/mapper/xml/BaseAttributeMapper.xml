@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryan.mapper.BaseAttributeMapper">
+
+    <!--
+         面试：
+        <resultType>和<resultMap>的区别
+        # 和 $ 的区别
+    -->
+
+    <!--一级分类-->
+    <resultMap id="propertyMap" type="com.ryan.entity.BaseAttribute" autoMapping="true">
+        <id property="id" column="id"></id>
+        <!--二级分类-->
+        <collection property="attributeValueList" ofType="com.ryan.entity.BaseAttributeValue" autoMapping="true">
+            <id property="id" column="attribute_value_id"></id>
+        </collection>
+    </resultMap>
+
+    <select id="getPropertyByCategory1Id" resultMap="propertyMap">
+        SELECT
+            a.id,
+            a.attribute_name,
+            a.category1_id,
+            b.id attribute_value_id,
+            b.value_name,
+            b.attribute_id
+        FROM
+            base_attribute a
+            INNER JOIN base_attribute_value b ON a.id = b.attribute_id
+            where a.category1_id = #{category1Id}
+    </select>
+</mapper>

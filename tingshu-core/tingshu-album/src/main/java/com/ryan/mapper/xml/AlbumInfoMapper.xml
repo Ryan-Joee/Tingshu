@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ryan.mapper.AlbumInfoMapper">
+
+    <select id="getUserAlbumByPage" resultType="com.ryan.vo.AlbumTempVo">
+        select
+            c.albumId,
+            c.albumTitle,
+            c.coverUrl,
+            c.includeTrackCount,
+            c.status,
+            c.createTime,
+            MAX(if(c.statType = '0401', c.statNum, 0)) as playStatNum,
+            MAX(if(c.statType = '0402', c.statNum, 0)) as subscribeStatNum,
+            MAX(if(c.statType = '0403', c.statNum, 0)) as buyStatNum,
+            MAX(if(c.statType = '0404', c.statNum, 0)) as commentStatNum
+        from (select
+                a.id AS albumId,
+                a.album_title AS albumTitle,
+                a.cover_url AS coverUrl,
+                a.include_track_count AS includeTrackCount,
+                a.STATUS,
+                a.create_time AS createTime,
+                b.stat_type AS statType,
+                b.stat_num AS statNum
+              from
+                  album_info a
+                  Left Join album_stat b on a.id = b.album_id
+            <where>
+                <if test="albumInfoQuery.userId != null">
+                    and a.user_id = #{albumInfoQuery.userId}
+                </if>
+                <if test="albumInfoQuery.albumTitle != null and albumInfoQuery.albumTitle != ''">
+                    and a.album_title like concat('%', #{albumInfoQuery.albumTitle}, '%')
+                </if>
+                <if test="albumInfoQuery.status != null and albumInfoQuery.status != ''">
+                    and a.status = #{albumInfoQuery.status}
+                </if>
+                and a.is_deleted = 0
+            </where>
+             ) c
+        GROUP BY c.albumId
+        order by c.createTime desc
+    </select>
+</mapper>
