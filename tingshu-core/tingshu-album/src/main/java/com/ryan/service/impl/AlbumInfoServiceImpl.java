@@ -14,6 +14,8 @@ import com.ryan.service.AlbumStatService;
 import com.ryan.util.AuthContextHolder;
 import com.ryan.util.SleepUtils;
 import org.jetbrains.annotations.NotNull;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -84,8 +86,30 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
     public AlbumInfo getAlbumInfoById(Long albumId) {
 //        AlbumInfo albumInfo = getAlbumInfoFromDB(albumId);
 //        AlbumInfo albumInfo = getAlbumInfoFromRedis(albumId);
-        AlbumInfo albumInfo = getAlbumInfoFromRedisWithThreadLocal(albumId);
+//        AlbumInfo albumInfo = getAlbumInfoFromRedisWithThreadLocal(albumId);
+        AlbumInfo albumInfo = getAlbumInfoFromRedisson(albumId);
         return albumInfo;
+    }
+
+    @Autowired
+    private RedissonClient redissonClient;
+
+    private AlbumInfo getAlbumInfoFromRedisson(Long albumId) {
+        String cacheKey = RedisConstant.ALBUM_INFO_PREFIX + albumId;
+        AlbumInfo albumInfoRedis  = (AlbumInfo) redisTemplate.opsForValue().get(cacheKey);
+        String lockKey="lock-" + albumId;
+        RLock lock = redissonClient.getLock(lockKey);
+        if (albumInfoRedis == null) {
+            lock.lock();
+            try {
+                AlbumInfo albumInfoFromDB = getAlbumInfoFromDB(albumId);
+                redisTemplate.opsForValue().set(cacheKey, albumInfoFromDB);
+                return albumInfoFromDB;
+            } finally {
+                lock.unlock();
+            }
+        }
+        return albumInfoRedis;
     }
 
 
