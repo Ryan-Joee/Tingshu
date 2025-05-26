@@ -12,15 +12,21 @@ import com.ryan.service.AlbumAttributeValueService;
 import com.ryan.service.AlbumInfoService;
 import com.ryan.service.AlbumStatService;
 import com.ryan.util.AuthContextHolder;
+import com.ryan.util.SleepUtils;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * <p>
@@ -77,8 +83,54 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
     @Override
     public AlbumInfo getAlbumInfoById(Long albumId) {
 //        AlbumInfo albumInfo = getAlbumInfoFromDB(albumId);
-        AlbumInfo albumInfo = getAlbumInfoFromRedis(albumId);
+//        AlbumInfo albumInfo = getAlbumInfoFromRedis(albumId);
+        AlbumInfo albumInfo = getAlbumInfoFromRedisWithThreadLocal(albumId);
         return albumInfo;
+    }
+
+
+    // 添加分布式锁
+    ThreadLocal<String> threadLocal = new ThreadLocal<>();
+    private AlbumInfo getAlbumInfoFromRedisWithThreadLocal(Long albumId) {
+        String cacheKey = RedisConstant.ALBUM_INFO_PREFIX + albumId;
+        AlbumInfo albumInfoRedis = (AlbumInfo) redisTemplate.opsForValue().get(cacheKey);
+        //锁的粒度太大
+        String lockKey="lock-"+albumId;
+        if (albumInfoRedis == null) {
+            String token = threadLocal.get();
+            boolean accquireLock = false;
+            if (!StringUtils.isEmpty(token)) {
+                //已经拿到过锁了
+                accquireLock = true;
+            } else {
+                token = UUID.randomUUID().toString();
+                accquireLock = redisTemplate.opsForValue().setIfAbsent(lockKey, token, 3, TimeUnit.SECONDS);
+            }
+            if (accquireLock) {
+                //doBusiness
+                AlbumInfo albumInfoDb = getAlbumInfoFromDB(albumId);
+                redisTemplate.opsForValue().set(cacheKey, albumInfoDb);
+                String luaScript = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
+                DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>();
+                redisScript.setScriptText(luaScript);
+                redisScript.setResultType(Long.class);
+                redisTemplate.execute(redisScript, Arrays.asList(lockKey), token);
+                //擦屁股
+                threadLocal.remove();
+                return albumInfoDb;
+            } else {
+                while (true) {
+                    SleepUtils.millis(50);
+                    boolean retryAccquireLock = redisTemplate.opsForValue().setIfAbsent(lockKey, token, 3, TimeUnit.SECONDS);
+                    if (retryAccquireLock) {
+                        threadLocal.set(token);
+                        break;
+                    }
+                }
+                return getAlbumInfoFromRedisWithThreadLocal(albumId);
+            }
+        }
+        return albumInfoRedis;
     }
 
     @Autowired
