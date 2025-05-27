@@ -14,6 +14,7 @@ import com.ryan.service.AlbumStatService;
 import com.ryan.util.AuthContextHolder;
 import com.ryan.util.SleepUtils;
 import org.jetbrains.annotations.NotNull;
+import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -94,6 +95,9 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
     @Autowired
     private RedissonClient redissonClient;
 
+    @Autowired
+    private RBloomFilter bloomFilter;
+
     private AlbumInfo getAlbumInfoFromRedisson(Long albumId) {
         String cacheKey = RedisConstant.ALBUM_INFO_PREFIX + albumId;
         AlbumInfo albumInfoRedis  = (AlbumInfo) redisTemplate.opsForValue().get(cacheKey);
@@ -102,9 +106,14 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
         if (albumInfoRedis == null) {
             lock.lock();
             try {
-                AlbumInfo albumInfoFromDB = getAlbumInfoFromDB(albumId);
-                redisTemplate.opsForValue().set(cacheKey, albumInfoFromDB);
-                return albumInfoFromDB;
+                // 先判断布隆过滤器中是否存在albumId
+                // 布隆里没有那数据库绝对没有；布隆里有那数据库可能有-> 查数据库
+                boolean flag = bloomFilter.contains(albumId);
+                if (flag) {
+                    AlbumInfo albumInfoFromDB = getAlbumInfoFromDB(albumId);
+                    redisTemplate.opsForValue().set(cacheKey, albumInfoFromDB);
+                    return albumInfoFromDB;
+                }
             } finally {
                 lock.unlock();
             }
