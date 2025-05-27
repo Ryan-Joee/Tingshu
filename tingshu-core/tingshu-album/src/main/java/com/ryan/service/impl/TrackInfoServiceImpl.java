@@ -12,6 +12,7 @@ import com.ryan.service.TrackInfoService;
 import com.ryan.service.TrackStatService;
 import com.ryan.service.VodService;
 import com.ryan.util.AuthContextHolder;
+import com.tencentcloudapi.common.exception.TencentCloudSDKException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,7 +46,7 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
      */
     @Transactional
     @Override
-    public void saveTrackInfo(TrackInfo trackInfo) {
+    public void saveTrackInfo(TrackInfo trackInfo) throws TencentCloudSDKException {
         trackInfo.setUserId(AuthContextHolder.getUserId());
         trackInfo.setStatus(SystemConstant.TRACK_APPROVED); // 设置专辑状态为 已通过
         vodService.getTrackMediaInfo(trackInfo);
@@ -78,7 +79,7 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
      * @param trackInfo 声音信息
      */
     @Override
-    public void updateTrackInfoById(TrackInfo trackInfo) {
+    public void updateTrackInfoById(TrackInfo trackInfo) throws TencentCloudSDKException {
         vodService.getTrackMediaInfo(trackInfo);
         updateById(trackInfo);
     }
@@ -89,7 +90,7 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
      */
     @Transactional
     @Override
-    public void deleteTrackInfo(Long trackId) {
+    public void deleteTrackInfo(Long trackId) throws TencentCloudSDKException {
         // 更新专辑声音个数
         TrackInfo trackInfo = getById(trackId);
         AlbumInfo albumInfo = albumInfoService.getById(trackInfo.getAlbumId());

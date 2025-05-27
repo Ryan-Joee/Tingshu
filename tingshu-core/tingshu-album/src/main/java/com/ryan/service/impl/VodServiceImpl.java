@@ -8,9 +8,12 @@ import com.ryan.entity.TrackInfo;
 import com.ryan.service.VodService;
 import com.ryan.util.UploadFileUtil;
 import com.tencentcloudapi.common.Credential;
+import com.tencentcloudapi.common.exception.TencentCloudSDKException;
 import com.tencentcloudapi.vod.v20180717.VodClient;
-import com.tencentcloudapi.vod.v20180717.models.*;
-import lombok.SneakyThrows;
+import com.tencentcloudapi.vod.v20180717.models.DeleteMediaRequest;
+import com.tencentcloudapi.vod.v20180717.models.DescribeMediaInfosRequest;
+import com.tencentcloudapi.vod.v20180717.models.DescribeMediaInfosResponse;
+import com.tencentcloudapi.vod.v20180717.models.MediaInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,10 +28,9 @@ public class VodServiceImpl implements VodService {
     @Autowired
     private VodProperties vodProperties;
 
-    @SneakyThrows
     @Override
     // 上传声音的业务实现，调用腾讯云的Vod
-    public Map<String, Object> uploadTrack(MultipartFile file) {
+    public Map<String, Object> uploadTrack(MultipartFile file) throws Exception {
         // 声音上传的临时文件
         String tempPath = UploadFileUtil.uploadTempPath(vodProperties.getTempPath(), file);
         VodUploadClient client = new VodUploadClient(vodProperties.getSecretId(), vodProperties.getSecretKey());
@@ -41,10 +43,9 @@ public class VodServiceImpl implements VodService {
         return map;
     }
 
-    @SneakyThrows
     @Override
     // 获取声音的详细信息
-    public void getTrackMediaInfo(TrackInfo trackInfo) {
+    public void getTrackMediaInfo(TrackInfo trackInfo) throws TencentCloudSDKException {
         Credential cred = new Credential(vodProperties.getSecretId(), vodProperties.getSecretKey());
         // 实例化一个http选项，可选的，没有特殊需求可以跳过
         VodClient client = new VodClient(cred, vodProperties.getRegion());
@@ -63,9 +64,8 @@ public class VodServiceImpl implements VodService {
     }
 
     // 删除声音
-    @SneakyThrows
     @Override
-    public void removeTrack(String mediaFileId) {
+    public void removeTrack(String mediaFileId) throws TencentCloudSDKException {
         Credential cred = new Credential(vodProperties.getSecretId(), vodProperties.getSecretKey());
         VodClient client = new VodClient(cred, vodProperties.getRegion());
         DeleteMediaRequest req = new DeleteMediaRequest();

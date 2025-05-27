@@ -14,6 +14,7 @@ import com.ryan.service.TrackInfoService;
 import com.ryan.service.VodService;
 import com.ryan.util.AuthContextHolder;
 import com.ryan.vo.TrackTempVo;
+import com.tencentcloudapi.common.exception.TencentCloudSDKException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,7 +62,7 @@ public class TrackController {
     // http://127.0.0.1/api/album/trackInfo/uploadTrack
     @Operation(summary = "上传声音")
     @PostMapping("uploadTrack")
-    public RetVal uploadTrack(MultipartFile file) {
+    public RetVal uploadTrack(MultipartFile file) throws Exception {
         Map<String, Object> retMap = vodService.uploadTrack(file);
         return RetVal.ok(retMap);
     }
@@ -74,7 +75,7 @@ public class TrackController {
     @TingshuLogin
     @Operation(summary = "新增声音")
     @PostMapping("saveTrackInfo")
-    public RetVal saveTrackInfo(@RequestBody TrackInfo trackInfo) {
+    public RetVal saveTrackInfo(@RequestBody TrackInfo trackInfo) throws TencentCloudSDKException {
         trackInfoService.saveTrackInfo(trackInfo);
         return RetVal.ok();
     }
@@ -109,7 +110,7 @@ public class TrackController {
     @TingshuLogin
     @Operation(summary = "修改声音信息")
     @PutMapping("updateTrackInfoById")
-    public RetVal updateTrackInfoById(@RequestBody TrackInfo trackInfo) {
+    public RetVal updateTrackInfoById(@RequestBody TrackInfo trackInfo) throws TencentCloudSDKException {
         trackInfoService.updateTrackInfoById(trackInfo);
         return RetVal.ok();
     }
@@ -117,7 +118,7 @@ public class TrackController {
     @TingshuLogin
     @Operation(summary = "删除声音信息")
     @DeleteMapping("deleteTrackInfo/{trackId}")
-    public RetVal deleteTrackInfo(@PathVariable Long trackId) {
+    public RetVal deleteTrackInfo(@PathVariable Long trackId) throws TencentCloudSDKException {
         trackInfoService.deleteTrackInfo(trackId);
         return RetVal.ok();
     }

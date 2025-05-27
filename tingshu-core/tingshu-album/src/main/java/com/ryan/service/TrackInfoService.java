@@ -2,6 +2,7 @@ package com.ryan.service;
 
 import com.ryan.entity.TrackInfo;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.tencentcloudapi.common.exception.TencentCloudSDKException;
 
 /**
  * <p>
@@ -17,17 +18,17 @@ public interface TrackInfoService extends IService<TrackInfo> {
       * 新增声音
       * @param trackInfo 声音信息
       */
-     void saveTrackInfo(TrackInfo trackInfo);
+     void saveTrackInfo(TrackInfo trackInfo) throws TencentCloudSDKException;
 
     /**
      * 修改声音信息
      * @param trackInfo 声音信息
      */
-    void updateTrackInfoById(TrackInfo trackInfo);
+    void updateTrackInfoById(TrackInfo trackInfo) throws TencentCloudSDKException;
 
     /**
      * 删除声音信息
      * @param trackId 声音id
      */
-    void deleteTrackInfo(Long trackId);
+    void deleteTrackInfo(Long trackId) throws TencentCloudSDKException;
 }

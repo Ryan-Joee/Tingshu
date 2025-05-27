@@ -1,6 +1,7 @@
 package com.ryan.service;
 
 import com.ryan.entity.TrackInfo;
+import com.tencentcloudapi.common.exception.TencentCloudSDKException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
@@ -16,11 +17,11 @@ import java.util.Map;
 public interface VodService {
 
     // 上传声音
-    Map<String, Object> uploadTrack(MultipartFile file);
+    Map<String, Object> uploadTrack(MultipartFile file) throws Exception;
 
     // 获取声音的详细信息
-    void getTrackMediaInfo(TrackInfo trackInfo);
+    void getTrackMediaInfo(TrackInfo trackInfo) throws TencentCloudSDKException;
 
     // 删除声音
-    void removeTrack(String mediaFileId);
+    void removeTrack(String mediaFileId) throws TencentCloudSDKException;
 }

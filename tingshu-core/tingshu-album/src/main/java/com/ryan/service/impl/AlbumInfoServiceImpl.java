@@ -2,6 +2,7 @@ package com.ryan.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.ryan.cache.TingshuCache;
 import com.ryan.constant.RedisConstant;
 import com.ryan.constant.SystemConstant;
 import com.ryan.entity.AlbumAttributeValue;
@@ -83,12 +84,13 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 
 
     // 根据id查询专辑信息
+    @TingshuCache("albumInfo")
     @Override
     public AlbumInfo getAlbumInfoById(Long albumId) {
-//        AlbumInfo albumInfo = getAlbumInfoFromDB(albumId);
+        AlbumInfo albumInfo = getAlbumInfoFromDB(albumId);
 //        AlbumInfo albumInfo = getAlbumInfoFromRedis(albumId);
 //        AlbumInfo albumInfo = getAlbumInfoFromRedisWithThreadLocal(albumId);
-        AlbumInfo albumInfo = getAlbumInfoFromRedisson(albumId);
+//        AlbumInfo albumInfo = getAlbumInfoFromRedisson(albumId);
         return albumInfo;
     }
 

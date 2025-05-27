@@ -1,23 +1,13 @@
 package com.ryan.handler;
 
 import com.ryan.exception.TingshuException;
-import com.ryan.result.RetVal;
 import com.ryan.result.ResultCodeEnum;
+import com.ryan.result.RetVal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.validation.BindException;
-import org.springframework.validation.BindingResult;
-import org.springframework.validation.FieldError;
-import org.springframework.validation.ObjectError;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 
 /**
@@ -28,17 +18,10 @@ import java.util.stream.Collectors;
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(Exception.class)
-    @ResponseBody
-    public RetVal error(Exception e){
-        e.printStackTrace();
-        return RetVal.fail();
-    }
-
     /**
      * 自定义异常处理方法
-     * @param e
-     * @return
+     * @param e 异常对象
+     * @return RetVal
      */
     @ExceptionHandler(TingshuException.class)
     @ResponseBody
@@ -63,6 +46,21 @@ public class GlobalExceptionHandler {
     public RetVal error(AccessDeniedException e) throws AccessDeniedException {
         return RetVal.build(null, ResultCodeEnum.PERMISSION);
     }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseBody
+    public RetVal error(Exception e){
+        e.printStackTrace();
+        return RetVal.fail();
+    }
+
+    @ExceptionHandler(Throwable.class)
+    @ResponseBody
+    public RetVal handleThrowable(Throwable t) {
+        t.printStackTrace();
+        return RetVal.fail("系统错误：" + t.getMessage());
+    }
+
 
 
 }

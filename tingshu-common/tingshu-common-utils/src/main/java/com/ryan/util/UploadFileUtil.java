@@ -1,10 +1,10 @@
 package com.ryan.util;
 
-import lombok.SneakyThrows;
 import org.joda.time.DateTime;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.IOException;
 
 
 public class UploadFileUtil {
@@ -14,8 +14,7 @@ public class UploadFileUtil {
      * @param file
      * @return
      */
-    @SneakyThrows
-    public static String uploadTempPath(String tempPath, MultipartFile file) {
+    public static String uploadTempPath(String tempPath, MultipartFile file) throws IOException {
         if (null == file) return "";
         String date = new DateTime().toString("yyyyMMdd");
         String filePath = tempPath + File.separator + date;

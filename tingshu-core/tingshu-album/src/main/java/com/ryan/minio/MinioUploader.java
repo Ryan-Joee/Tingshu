@@ -1,7 +1,9 @@
 package com.ryan.minio;
 
-import io.minio.*;
-import lombok.SneakyThrows;
+import io.minio.BucketExistsArgs;
+import io.minio.MakeBucketArgs;
+import io.minio.MinioClient;
+import io.minio.PutObjectArgs;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -37,9 +39,8 @@ public class MinioUploader {
      *  所以就会报空指针异常
      */
 
-    @SneakyThrows //
     @Bean
-    public MinioClient minioClient() {
+    public MinioClient minioClient() throws Exception {
         // Create a minioClient with the MinIO server playground, its access key and secret key.
         MinioClient minioClient =
                 MinioClient.builder()
