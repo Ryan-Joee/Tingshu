@@ -36,7 +36,7 @@ public class CategoryController {
     private BaseAttributeMapper propertyKeyMapper;
 
     // http://127.0.0.1/api/album/category/getAllCategoryList
-    @TingshuLogin
+    @TingshuLogin(required = true)
     @Operation(summary = "获取全部分类信息")
     @GetMapping("getAllCategoryList")
     public RetVal wxLogin() {

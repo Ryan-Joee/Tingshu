@@ -1,5 +1,6 @@
 package com.ryan.service.impl;
 
+import com.ryan.cache.TingshuCache;
 import com.ryan.entity.BaseCategoryView;
 import com.ryan.mapper.BaseCategoryViewMapper;
 import com.ryan.service.BaseCategoryViewService;
@@ -65,6 +66,7 @@ public class BaseCategoryViewServiceImpl extends ServiceImpl<BaseCategoryViewMap
         }
         return categoryVoList;
     }
+
 
     @Override
     public List<CategoryVo> getAllCategoryList() {

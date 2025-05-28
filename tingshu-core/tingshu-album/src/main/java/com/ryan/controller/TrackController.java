@@ -3,6 +3,7 @@ package com.ryan.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.ryan.cache.TingshuCache;
 import com.ryan.entity.AlbumInfo;
 import com.ryan.entity.TrackInfo;
 import com.ryan.login.TingshuLogin;
@@ -100,6 +101,7 @@ public class TrackController {
         return RetVal.ok(pageParam);
     }
 
+    @TingshuCache(value = "trackInfo", enableBloom = false)
     @Operation(summary = "根据id获取声音信息")
     @GetMapping("getTrackInfoById/{trackId}")
     public RetVal getTrackInfoById(@PathVariable Long trackId) {

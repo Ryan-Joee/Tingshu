@@ -10,4 +10,7 @@ import java.lang.annotation.Target;
 public @interface TingshuCache {
     // 定义一个属性
     String value() default "cache";
+
+    // 是否使用布隆过滤器--默认使用
+    boolean enableBloom() default true;
 }

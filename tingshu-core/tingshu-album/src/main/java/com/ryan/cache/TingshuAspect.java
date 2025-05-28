@@ -6,7 +6,7 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.redisson.api.RBloomFilter;
-import org.redisson.api.RLock;
+import org.redisson.api.RReadWriteLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -32,8 +32,7 @@ public class TingshuAspect {
     @Autowired
     private RBloomFilter bloomFilter;
 
-    // 2. 切面编程 + Redisson + 分布式锁
-
+    // 5. 不加布隆过滤器
     @Around("@annotation(com.ryan.cache.TingshuCache)")
     public Object cacheAroundAdvice(ProceedingJoinPoint joinPoint) throws Throwable {
         // 1. 拿到目标方法上的参数
@@ -50,27 +49,108 @@ public class TingshuAspect {
         String cacheKey = prefix + ":" + firstParam;
         Object redisObject = redisTemplate.opsForValue().get(cacheKey);
         String lockKey="lock-" + firstParam;
-        // 3. 改进:切面编程 + Redisson + 双重检查
-        // 单例设计模式--双重检查
         // 判断是否需要加锁 --> 性能问题
         if (redisObject == null) {
-            RLock lock = redissonClient.getLock(lockKey);
-            redisObject = redisTemplate.opsForValue().get(cacheKey);
-            // 判断是否需要从数据库中查询
-            if (redisObject == null) {
-                lock.lock();
-                try {
-                    // 先判断布隆过滤器中是否存在albumId
-                    // 布隆里没有那数据库绝对没有；布隆里有那数据库可能有-> 查数据库
+            synchronized (lockKey.intern()) {
+                // 判断是否需要从数据库中查询
+                if (redisObject == null) {
+                    // 拿到是否开启使用布隆过滤器
+                    boolean enableBloom = tingShuCache.enableBloom();
+                    Object objectDb = null;
+                    if (enableBloom) {
+                        boolean flag = bloomFilter.contains(firstParam);
+                        if (flag) {
+                            objectDb = joinPoint.proceed();
+                        }
+                    } else {
+                        objectDb = joinPoint.proceed();
+                    }
+                    redisTemplate.opsForValue().set(cacheKey, objectDb);
+                    return objectDb;
+                }
+            }
+        }
+        return redisObject;
+    }
+
+    // 4. 切面编程 + 双重检查 + 本地锁
+//    @Around("@annotation(com.ryan.cache.TingshuCache)")
+    public Object cacheAroundAdviceThird(ProceedingJoinPoint joinPoint) throws Throwable {
+        // 1. 拿到目标方法上的参数
+        Object[] methodParams = joinPoint.getArgs();
+        // 2. 拿到目标方法
+        MethodSignature methodSignature = (MethodSignature) joinPoint.getSignature();
+        Method targetMethod = methodSignature.getMethod();
+        // 3. 拿到目标方法上的注解@TingshuCache
+        TingshuCache tingShuCache = targetMethod.getAnnotation(TingshuCache.class);
+        // 4. 拿到注解上的值
+        String prefix = tingShuCache.value();
+        Object firstParam = methodParams[0];
+
+        String cacheKey = prefix + ":" + firstParam;
+        Object redisObject = redisTemplate.opsForValue().get(cacheKey);
+        String lockKey="lock-" + firstParam;
+        // 判断是否需要加锁 --> 性能问题
+        if (redisObject == null) {
+            synchronized (lockKey.intern()) {
+                // 判断是否需要从数据库中查询
+                if (redisObject == null) {
                     boolean flag = bloomFilter.contains(firstParam);
                     if (flag) {
                         Object objectDb = joinPoint.proceed();
                         redisTemplate.opsForValue().set(cacheKey, objectDb);
                         return objectDb;
                     }
-                } finally {
-                    lock.unlock();
                 }
+            }
+        }
+        return redisObject;
+    }
+
+
+    // 2. 切面编程 + Redisson + 分布式锁
+    // @Around("@annotation(com.ryan.cache.TingshuCache)")
+    public Object cacheAroundAdviceSecond(ProceedingJoinPoint joinPoint) throws Throwable {
+        // 1. 拿到目标方法上的参数
+        Object[] methodParams = joinPoint.getArgs();
+        // 2. 拿到目标方法
+        MethodSignature methodSignature = (MethodSignature) joinPoint.getSignature();
+        Method targetMethod = methodSignature.getMethod();
+        // 3. 拿到目标方法上的注解@TingshuCache
+        TingshuCache tingShuCache = targetMethod.getAnnotation(TingshuCache.class);
+        // 4. 拿到注解上的值
+        String prefix = tingShuCache.value();
+        Object firstParam = methodParams[0];
+
+        String cacheKey = prefix + ":" + firstParam;
+        Object redisObject = redisTemplate.opsForValue().get(cacheKey);
+        String lockKey="lock-" + firstParam;
+
+        // 4. 使用读写锁
+        RReadWriteLock rwLock = redissonClient.getReadWriteLock(lockKey);
+
+        // 3. 改进:切面编程 + Redisson + 双重检查
+        // 单例设计模式--双重检查
+        // 判断是否需要加锁 --> 性能问题
+        if (redisObject == null) {
+//            RLock lock = redissonClient.getLock(lockKey);
+            try {
+                rwLock.readLock().lock();
+                redisObject = redisTemplate.opsForValue().get(cacheKey);
+                rwLock.readLock().unlock();
+                // 判断是否需要从数据库中查询
+                if (redisObject == null) {
+                    rwLock.writeLock().lock();
+                    boolean flag = bloomFilter.contains(firstParam);
+                    if (flag) {
+                        Object objectDb = joinPoint.proceed();
+                        redisTemplate.opsForValue().set(cacheKey, objectDb);
+                        rwLock.writeLock().unlock();
+                        return objectDb;
+                    }
+                }
+            } finally {
+                rwLock.readLock().unlock();
             }
         }
         return redisObject;
