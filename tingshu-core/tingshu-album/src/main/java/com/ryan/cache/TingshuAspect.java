@@ -1,11 +1,13 @@
 package com.ryan.cache;
 
-import com.ryan.entity.AlbumInfo;
 import com.ryan.util.SleepUtils;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.redisson.api.RBloomFilter;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -24,10 +26,53 @@ public class TingshuAspect {
     @Autowired
     private RedisTemplate redisTemplate;
 
-    ThreadLocal<String> threadLocal = new ThreadLocal<>();
+    @Autowired
+    private RedissonClient redissonClient;
+
+    @Autowired
+    private RBloomFilter bloomFilter;
+
+    // 2. 切面编程 + Redisson + 分布式锁
 
     @Around("@annotation(com.ryan.cache.TingshuCache)")
     public Object cacheAroundAdvice(ProceedingJoinPoint joinPoint) throws Throwable {
+        // 1. 拿到目标方法上的参数
+        Object[] methodParams = joinPoint.getArgs();
+        // 2. 拿到目标方法
+        MethodSignature methodSignature = (MethodSignature) joinPoint.getSignature();
+        Method targetMethod = methodSignature.getMethod();
+        // 3. 拿到目标方法上的注解@TingshuCache
+        TingshuCache tingShuCache = targetMethod.getAnnotation(TingshuCache.class);
+        // 4. 拿到注解上的值
+        String prefix = tingShuCache.value();
+        Object firstParam = methodParams[0];
+
+        String cacheKey = prefix + ":" + firstParam;
+        Object redisObject = redisTemplate.opsForValue().get(cacheKey);
+        String lockKey="lock-" + firstParam;
+        RLock lock = redissonClient.getLock(lockKey);
+        if (redisObject == null) {
+            lock.lock();
+            try {
+                // 先判断布隆过滤器中是否存在albumId
+                // 布隆里没有那数据库绝对没有；布隆里有那数据库可能有-> 查数据库
+                boolean flag = bloomFilter.contains(firstParam);
+                if (flag) {
+                    Object objectDb = joinPoint.proceed();
+                    redisTemplate.opsForValue().set(cacheKey, objectDb);
+                    return objectDb;
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
+        return redisObject;
+    }
+
+    // 1. 切面编程 + redis + ThreadLocal + 分布式锁
+    ThreadLocal<String> threadLocal = new ThreadLocal<>();
+//    @Around("@annotation(com.ryan.cache.TingshuCache)")
+    public Object cacheAroundAdviceFirst(ProceedingJoinPoint joinPoint) throws Throwable {
         // 1. 拿到目标方法上的参数
         Object[] methodParams = joinPoint.getArgs();
         // 2. 拿到目标方法
@@ -41,7 +86,7 @@ public class TingshuAspect {
         Object firstParam = methodParams[0];
 
         String cacheKey = prefix + ":" + firstParam;
-        Object redisObject = (AlbumInfo) redisTemplate.opsForValue().get(cacheKey);
+        Object redisObject = redisTemplate.opsForValue().get(cacheKey);
         //锁的粒度太大
         String lockKey="lock-"+ firstParam;
         if (redisObject == null) {
