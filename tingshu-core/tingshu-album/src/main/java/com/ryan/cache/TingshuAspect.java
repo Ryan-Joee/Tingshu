@@ -50,20 +50,27 @@ public class TingshuAspect {
         String cacheKey = prefix + ":" + firstParam;
         Object redisObject = redisTemplate.opsForValue().get(cacheKey);
         String lockKey="lock-" + firstParam;
-        RLock lock = redissonClient.getLock(lockKey);
+        // 3. 改进:切面编程 + Redisson + 双重检查
+        // 单例设计模式--双重检查
+        // 判断是否需要加锁 --> 性能问题
         if (redisObject == null) {
-            lock.lock();
-            try {
-                // 先判断布隆过滤器中是否存在albumId
-                // 布隆里没有那数据库绝对没有；布隆里有那数据库可能有-> 查数据库
-                boolean flag = bloomFilter.contains(firstParam);
-                if (flag) {
-                    Object objectDb = joinPoint.proceed();
-                    redisTemplate.opsForValue().set(cacheKey, objectDb);
-                    return objectDb;
+            RLock lock = redissonClient.getLock(lockKey);
+            redisObject = redisTemplate.opsForValue().get(cacheKey);
+            // 判断是否需要从数据库中查询
+            if (redisObject == null) {
+                lock.lock();
+                try {
+                    // 先判断布隆过滤器中是否存在albumId
+                    // 布隆里没有那数据库绝对没有；布隆里有那数据库可能有-> 查数据库
+                    boolean flag = bloomFilter.contains(firstParam);
+                    if (flag) {
+                        Object objectDb = joinPoint.proceed();
+                        redisTemplate.opsForValue().set(cacheKey, objectDb);
+                        return objectDb;
+                    }
+                } finally {
+                    lock.unlock();
                 }
-            } finally {
-                lock.unlock();
             }
         }
         return redisObject;
