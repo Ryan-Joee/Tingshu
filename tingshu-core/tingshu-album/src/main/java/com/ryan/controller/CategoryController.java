@@ -66,8 +66,8 @@ public class CategoryController {
     private BaseCategory3Service category3Service;
     @Operation(summary = "通过一级分类id三级分类列表")
     @GetMapping("getCategory3ListByCategory1Id/{category1Id}")
-    public List<BaseCategory3> getCategory3ListByCategory1Id(@PathVariable Long category1Id) {
+    public RetVal<List<BaseCategory3>> getCategory3ListByCategory1Id(@PathVariable Long category1Id) {
         List<BaseCategory3> category3List = category3Service.getCategory3ListByCategory1Id(category1Id);
-        return category3List;
+        return RetVal.ok(category3List);
     }
 }

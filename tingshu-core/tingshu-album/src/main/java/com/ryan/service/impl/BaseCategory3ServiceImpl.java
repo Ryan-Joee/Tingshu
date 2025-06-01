@@ -48,7 +48,7 @@ public class BaseCategory3ServiceImpl extends ServiceImpl<BaseCategory3Mapper, B
         LambdaQueryWrapper<BaseCategory3> baseCategory3Wrapper = Wrappers.lambdaQuery(BaseCategory3.class)
                 .in(BaseCategory3::getCategory2Id, category2IdList)
                 .eq(BaseCategory3::getIsTop, 1)
-                .last("limit 8");
+                .last("limit 7");
         return category3Service.list(baseCategory3Wrapper);
     }
 }
