@@ -16,6 +16,7 @@
         <module>tingshu-album</module>
         <module>tingshu-account</module>
         <module>tingshu-user</module>
+        <module>tingshu-search</module>
     </modules>
     <dependencies>
         <dependency>

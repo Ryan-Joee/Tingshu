@@ -1,12 +1,16 @@
 package com.ryan.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.ryan.entity.AlbumAttributeValue;
 import com.ryan.entity.AlbumInfo;
 import com.ryan.login.TingshuLogin;
 import com.ryan.mapper.AlbumInfoMapper;
 import com.ryan.query.AlbumInfoQuery;
 import com.ryan.result.RetVal;
+import com.ryan.service.AlbumAttributeValueService;
 import com.ryan.service.AlbumInfoService;
 import com.ryan.util.AuthContextHolder;
 import com.ryan.vo.AlbumTempVo;
@@ -15,6 +19,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * <p>
@@ -68,7 +74,7 @@ public class AlbumController {
     // http://127.0.0.1/api/album/albumInfo/getAlbumInfoById/1600
     @Operation(summary = "根据id查询专辑信息")
     @GetMapping("getAlbumInfoById/{albumId}")
-    public RetVal getAlbumInfoById(@PathVariable Long albumId) {
+    public RetVal<AlbumInfo> getAlbumInfoById(@PathVariable Long albumId) {
         AlbumInfo albumInfo = albumInfoService.getAlbumInfoById(albumId);
         return RetVal.ok(albumInfo);
     }
@@ -89,6 +95,19 @@ public class AlbumController {
     public RetVal deleteAlbumInfo(@PathVariable Long albumId) {
         albumInfoService.deleteAlbumInfo(albumId);
         return RetVal.ok();
+    }
+
+    /** 以下内容属于搜索模块 **/
+    @Autowired
+    private AlbumAttributeValueService albumAttributeValueService;
+    @Operation(summary = "根据albumId查询专辑属性信息")
+    @GetMapping("getAlbumInfoPropertyValue/{albumId}")
+    public List<AlbumAttributeValue> getAlbumInfoPropertyValue(@PathVariable Long albumId) {
+        albumInfoService.deleteAlbumInfo(albumId);
+        LambdaQueryWrapper<AlbumAttributeValue> wrapper = Wrappers.lambdaQuery(AlbumAttributeValue.class)
+                .eq(AlbumAttributeValue::getAlbumId, albumId);
+        List<AlbumAttributeValue> attributeValueList = albumAttributeValueService.list(wrapper);
+        return attributeValueList;
     }
 
 }

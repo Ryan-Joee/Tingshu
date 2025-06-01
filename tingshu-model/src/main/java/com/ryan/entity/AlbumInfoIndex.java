@@ -83,6 +83,6 @@ public class AlbumInfoIndex implements Serializable {
 
     //专辑属性值 Nested 支持嵌套查询
     @Field(type = FieldType.Nested)
-    private List<com.ryan.entity.AttributeValueIndex> attributeValueIndexList;
+    private List<AttributeValueIndex> attributeValueIndexList;
 
 }

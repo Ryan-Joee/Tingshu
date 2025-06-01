@@ -1,6 +1,7 @@
 package com.ryan.controller;
 
 import com.ryan.entity.BaseAttribute;
+import com.ryan.entity.BaseCategoryView;
 import com.ryan.login.TingshuLogin;
 import com.ryan.mapper.BaseAttributeMapper;
 import com.ryan.result.RetVal;
@@ -50,5 +51,12 @@ public class CategoryController {
     public RetVal getPropertyByCategory1Id(@PathVariable Long category1Id) {
         List<BaseAttribute> categoryPropertyList = propertyKeyMapper.getPropertyByCategory1Id(category1Id);
         return RetVal.ok(categoryPropertyList);
+    }
+
+    @Operation(summary = "通过三级分类id查询分类信息")
+    @GetMapping("getCategoryView/{category3Id}")
+    public BaseCategoryView getCategoryView(@PathVariable Long category3Id) {
+        BaseCategoryView categoryView = categoryViewService.getById(category3Id);
+        return categoryView;
     }
 }
