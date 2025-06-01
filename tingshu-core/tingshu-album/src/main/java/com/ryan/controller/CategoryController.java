@@ -1,10 +1,12 @@
 package com.ryan.controller;
 
 import com.ryan.entity.BaseAttribute;
+import com.ryan.entity.BaseCategory3;
 import com.ryan.entity.BaseCategoryView;
 import com.ryan.login.TingshuLogin;
 import com.ryan.mapper.BaseAttributeMapper;
 import com.ryan.result.RetVal;
+import com.ryan.service.BaseCategory3Service;
 import com.ryan.service.BaseCategoryViewService;
 import com.ryan.vo.CategoryVo;
 import io.swagger.v3.oas.annotations.Operation;
@@ -58,5 +60,14 @@ public class CategoryController {
     public BaseCategoryView getCategoryView(@PathVariable Long category3Id) {
         BaseCategoryView categoryView = categoryViewService.getById(category3Id);
         return categoryView;
+    }
+
+    @Autowired
+    private BaseCategory3Service category3Service;
+    @Operation(summary = "通过一级分类id三级分类列表")
+    @GetMapping("getCategory3ListByCategory1Id/{category1Id}")
+    public List<BaseCategory3> getCategory3ListByCategory1Id(@PathVariable Long category1Id) {
+        List<BaseCategory3> category3List = category3Service.getCategory3ListByCategory1Id(category1Id);
+        return category3List;
     }
 }
