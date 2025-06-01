@@ -2,7 +2,9 @@ package com.ryan.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.ryan.SearchFeignClient;
 import com.ryan.cache.TingshuCache;
+import com.ryan.constant.KafkaConstant;
 import com.ryan.constant.RedisConstant;
 import com.ryan.constant.SystemConstant;
 import com.ryan.entity.AlbumAttributeValue;
@@ -12,6 +14,7 @@ import com.ryan.mapper.AlbumInfoMapper;
 import com.ryan.service.AlbumAttributeValueService;
 import com.ryan.service.AlbumInfoService;
 import com.ryan.service.AlbumStatService;
+import com.ryan.service.KafkaService;
 import com.ryan.util.AuthContextHolder;
 import com.ryan.util.SleepUtils;
 import org.jetbrains.annotations.NotNull;
@@ -49,6 +52,12 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
     @Autowired
     private AlbumStatService albumStatService;
 
+    @Autowired
+    private SearchFeignClient searchFeignClient;
+
+    @Autowired
+    private KafkaService kafkaService;
+
     // 面试题：什么是事务？
     // 新增专辑
     @Transactional
@@ -63,6 +72,14 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
             albumInfo.setTracksForFree(5);
         }
         save(albumInfo);
+
+        // 获取新专辑的 id
+//        Long albumId = albumInfo.getId();
+//        // 将新专辑的 id 添加到布隆过滤器
+//        if (albumId != null) {
+//            bloomFilter.add(albumId);
+//        }
+
         // 保存专辑标签属性
         List<AlbumAttributeValue> albumPropertyValueList = albumInfo.getAlbumPropertyValueList();
         if (!CollectionUtils.isEmpty(albumPropertyValueList)) {
@@ -80,6 +97,10 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
         List<AlbumStat> albumStatList = buildAlbumStatData(albumInfo.getId());
         albumStatService.saveBatch(albumStatList);
         // TODO 后面
+        // 如果为公开专辑，则把专辑信息添加到ES中
+        if (SystemConstant.OPEN_ALBUM.equals(albumInfo.getIsOpen())) {
+            searchFeignClient.onSaleAlbum(albumInfo.getId());
+        }
     }
 
 
@@ -211,7 +232,16 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
             }
             albumAttributeValueService.saveBatch(albumPropertyValueList);
         }
-        // TODO 还有其它事情要做
+        // TODO 还有其它事情要做 先修改缓存里面的信息
+
+        // 如果为公开专辑，则把专辑信息添加到ES中
+        if (SystemConstant.OPEN_ALBUM.equals(albumInfo.getIsOpen())) {
+//            searchFeignClient.onSaleAlbum(albumInfo.getId());
+            kafkaService.sendMessage(KafkaConstant.ONSALE_ALBUM_QUEUE, String.valueOf(albumInfo.getId()));
+        } else {
+//            searchFeignClient.offSaleAlbum(albumInfo.getId());
+            kafkaService.sendMessage(KafkaConstant.OFFSALE_ALBUM_QUEUE, String.valueOf(albumInfo.getId()));
+        }
     }
 
     // 删除专辑信息
@@ -226,6 +256,9 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
         // 3. 删除专辑的统计信息
         albumStatService.remove(new LambdaQueryWrapper<AlbumStat>().eq(AlbumStat::getAlbumId, albumId));
         // TODO 还有事情要做
+//        searchFeignClient.offSaleAlbum(albumId);
+        kafkaService.sendMessage(KafkaConstant.OFFSALE_ALBUM_QUEUE, String.valueOf(albumId));
+
     }
 
 

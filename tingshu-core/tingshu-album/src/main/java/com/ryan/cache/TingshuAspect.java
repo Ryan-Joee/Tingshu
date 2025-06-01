@@ -50,7 +50,7 @@ public class TingshuAspect {
         Object redisObject = redisTemplate.opsForValue().get(cacheKey);
         String lockKey="lock-" + firstParam;
         // 判断是否需要加锁 --> 性能问题
-        if (redisObject == null) {
+/*        if (redisObject == null) {
             synchronized (lockKey.intern()) {
                 // 判断是否需要从数据库中查询
                 if (redisObject == null) {
@@ -68,6 +68,13 @@ public class TingshuAspect {
                     redisTemplate.opsForValue().set(cacheKey, objectDb);
                     return objectDb;
                 }
+            }
+        }*/
+        if (redisObject == null) {
+            synchronized (lockKey.intern()) {
+                Object objectDb = joinPoint.proceed();
+                redisTemplate.opsForValue().set(cacheKey, objectDb);
+                return objectDb;
             }
         }
         return redisObject;

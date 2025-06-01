@@ -6,4 +6,10 @@ public interface SearchService {
      * @param albumId 专辑id
      */
     void onSaleAlbum(Long albumId);
+
+    /**
+     * 下架专辑
+     * @param albumId 专辑id
+     */
+    void offSaleAlbum(Long albumId);
 }

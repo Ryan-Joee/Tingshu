@@ -34,7 +34,9 @@ public class UserInfoController {
     public RetVal<UserInfoVo> getUserById(@PathVariable Long userId) {
         UserInfo userInfo = userInfoService.getById(userId);
         UserInfoVo userInfoVo = new UserInfoVo();
-        BeanUtils.copyProperties(userInfo, userInfoVo);
+        if (userInfo != null) {
+            BeanUtils.copyProperties(userInfo, userInfoVo);
+        }
         return RetVal.ok(userInfoVo);
     }
 }

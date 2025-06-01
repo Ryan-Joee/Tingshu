@@ -80,4 +80,13 @@ public class SearchServiceImpl implements SearchService {
         albumInfoIndex.setHotScore(hotScore);
          albumRepository.save(albumInfoIndex);
     }
+
+    /**
+     * 下架专辑
+     * @param albumId 专辑id
+     */
+    @Override
+    public void offSaleAlbum(Long albumId) {
+       albumRepository.deleteById(albumId);
+    }
 }
