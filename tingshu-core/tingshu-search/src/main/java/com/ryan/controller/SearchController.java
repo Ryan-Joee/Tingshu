@@ -1,14 +1,13 @@
 package com.ryan.controller;
 
+import com.ryan.query.AlbumIndexQuery;
 import com.ryan.result.RetVal;
 import com.ryan.service.SearchService;
+import com.ryan.vo.AlbumSearchResponseVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.List;
@@ -48,6 +47,14 @@ public class SearchController {
         List<Map<String, Object>> channelData = searchService.getChannelData(category1Id);
         return RetVal.ok(channelData);
     }
+
+    @Operation(summary = "专辑搜索")
+    @PostMapping
+    public RetVal  search(@RequestBody AlbumIndexQuery albumIndexQuery) throws IOException {
+        AlbumSearchResponseVo searchResponseVo = searchService.search(albumIndexQuery);
+        return RetVal.ok(searchResponseVo);
+    }
+
 
 
 
