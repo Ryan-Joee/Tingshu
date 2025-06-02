@@ -11,6 +11,8 @@ import co.elastic.clients.elasticsearch._types.query_dsl.TermsQueryField;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
+import co.elastic.clients.elasticsearch.core.search.Suggester;
+import co.elastic.clients.elasticsearch.core.search.Suggestion;
 import com.alibaba.fastjson.JSONObject;
 import com.ryan.AlbumFeignClient;
 import com.ryan.CategoryFeignClient;
@@ -19,13 +21,16 @@ import com.ryan.entity.*;
 import com.ryan.exception.TingshuException;
 import com.ryan.query.AlbumIndexQuery;
 import com.ryan.repository.AlbumRepository;
+import com.ryan.repository.SuggestRepository;
 import com.ryan.result.ResultCodeEnum;
 import com.ryan.service.SearchService;
+import com.ryan.util.PinYinUtils;
 import com.ryan.vo.AlbumInfoIndexVo;
 import com.ryan.vo.AlbumSearchResponseVo;
 import com.ryan.vo.UserInfoVo;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.elasticsearch.core.suggest.Completion;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
@@ -48,6 +53,9 @@ public class SearchServiceImpl implements SearchService {
 
     @Autowired
     private UserFeignClient userFeignClient;
+
+    @Autowired
+    private SuggestRepository suggestRepository;
 
     /**
      * 上架专辑
@@ -94,7 +102,25 @@ public class SearchServiceImpl implements SearchService {
         //计算公式：未实现 使用模拟数据
         double hotScore = num1 * 0.2 + num2 * 0.3 + num3 * 0.4 + num4 * 0.1;
         albumInfoIndex.setHotScore(hotScore);
-         albumRepository.save(albumInfoIndex);
+        albumRepository.save(albumInfoIndex);
+        // 专辑自动补全的内容
+        SuggestIndex suggestIndex = new SuggestIndex();
+        suggestIndex.setId(UUID.randomUUID().toString().replaceAll("-", ""));
+        suggestIndex.setTitle(albumInfoIndex.getAlbumTitle());
+        suggestIndex.setKeyword(new Completion(new String[]{albumInfoIndex.getAlbumTitle()}));
+        suggestIndex.setKeywordPinyin(new Completion(new String[]{PinYinUtils.toHanyuPinyin(albumInfoIndex.getAlbumTitle())}));
+        suggestIndex.setKeywordSequence(new Completion(new String[]{PinYinUtils.getFirstLetter(albumInfoIndex.getAlbumTitle())}));
+        suggestRepository.save(suggestIndex);
+        // 专辑主播名称自动补全
+        if (!StringUtils.isEmpty(albumInfoIndex.getAnnouncerName())) {
+            SuggestIndex announcerSuggestIndex = new SuggestIndex();
+            announcerSuggestIndex.setId(UUID.randomUUID().toString().replaceAll("-", ""));
+            announcerSuggestIndex.setTitle(albumInfoIndex.getAnnouncerName());
+            announcerSuggestIndex.setKeyword(new Completion(new String[]{albumInfoIndex.getAnnouncerName()}));
+            announcerSuggestIndex.setKeywordPinyin(new Completion(new String[]{PinYinUtils.toHanyuPinyin(albumInfoIndex.getAnnouncerName())}));
+            announcerSuggestIndex.setKeywordSequence(new Completion(new String[]{PinYinUtils.getFirstLetter(albumInfoIndex.getAnnouncerName())}));
+            suggestRepository.save(announcerSuggestIndex);
+        }
     }
 
     /**
@@ -167,6 +193,71 @@ public class SearchServiceImpl implements SearchService {
         long totalPages = (responseVo.getTotal() + albumIndexQuery.getPageSize() - 1) / albumIndexQuery.getPageSize();
         responseVo.setTotalPages(totalPages);
         return responseVo;
+    }
+
+    /**
+     * 关键字补全
+     * @param keyword 关键字
+     */
+    @Override
+    public Set<String> autoCompleteSuggest(String keyword) throws IOException {
+        //1.构建查询suggestinfo索引的suggester
+        Suggester suggester = new Suggester.Builder()
+                //还可以考虑是否加入fuzzy
+                .suggesters("suggestionKeyword", s -> s
+                        .prefix(keyword)
+                        .completion(c -> c
+                                .field("keyword")
+                                .size(10)
+                                .skipDuplicates(true)))
+                .suggesters("suggestionKeywordSequence", s -> s
+                        .prefix(keyword)
+                        .completion(c -> c
+                                .field("keywordSequence")
+                                .size(10)
+                                .skipDuplicates(true)))
+                .suggesters("suggestionKeywordPinyin", s -> s
+                        .prefix(keyword)
+                        .completion(c -> c
+                                .field("keywordPinyin")
+                                .size(10)
+                                .skipDuplicates(true))).build();
+        System.out.println(suggester.toString());
+        SearchResponse<SuggestIndex> response = elasticsearchClient.search(s -> s
+                .index("suggestinfo")
+                .suggest(suggester), SuggestIndex.class);
+        //2.解析索引里面的信息-不可重复
+        Set<String> suggestTitleList = analysisResponse(response);
+        //3.以title关键字查询同上面叠加
+        if (suggestTitleList.size() < 10) {
+            SearchResponse<SuggestIndex> responseSuggest = elasticsearchClient.search(s -> s
+                    .index("suggestinfo")
+                    .size(10)
+                    .query(q -> q.match(m -> m.field("title").query(keyword))), SuggestIndex.class);
+            List<Hit<SuggestIndex>> suggestHits = responseSuggest.hits().hits();
+            for (Hit<SuggestIndex> suggestHit : suggestHits) {
+                suggestTitleList.add(suggestHit.source().getTitle());
+                int total = suggestTitleList.size();
+                //最多自动补全10个信息
+                if (total >= 10) break;
+            }
+        }
+        return suggestTitleList;
+    }
+
+    private Set<String> analysisResponse(SearchResponse response) {
+        Set<String> suggestList = new HashSet<>();
+        Map<String, List<Suggestion<SuggestIndex>>> suggestMap = response.suggest();
+        suggestMap.entrySet().stream().forEach(suggestEntry -> {
+            List<Suggestion<SuggestIndex>> suggestValueList = suggestEntry.getValue();
+            suggestValueList.stream().forEach(suggestValue -> {
+                List<String> collect = suggestValue.completion().options().stream().map(it -> {
+                    return it.source().getTitle();
+                }).collect(Collectors.toList());
+                suggestList.addAll(collect);
+            });
+        });
+        return suggestList;
     }
 
     private SearchRequest buildQueryDsl(AlbumIndexQuery albumIndexQuery) {

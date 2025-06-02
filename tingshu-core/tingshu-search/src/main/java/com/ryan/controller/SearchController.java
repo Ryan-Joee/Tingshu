@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Tag(name = "搜索专辑管理")
 @RestController
@@ -50,12 +51,17 @@ public class SearchController {
 
     @Operation(summary = "专辑搜索")
     @PostMapping
-    public RetVal  search(@RequestBody AlbumIndexQuery albumIndexQuery) throws IOException {
+    public RetVal search(@RequestBody AlbumIndexQuery albumIndexQuery) throws IOException {
         AlbumSearchResponseVo searchResponseVo = searchService.search(albumIndexQuery);
         return RetVal.ok(searchResponseVo);
     }
 
-
+    @Operation(summary = "关键字补全")
+    @GetMapping("autoCompleteSuggest/{keyword}")
+    public RetVal autoCompleteSuggest(@PathVariable String keyword) throws IOException {
+        Set<String> suggestSet = searchService.autoCompleteSuggest(keyword);
+        return RetVal.ok(suggestSet);
+    }
 
 
 }

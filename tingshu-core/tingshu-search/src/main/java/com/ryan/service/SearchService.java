@@ -6,6 +6,7 @@ import com.ryan.vo.AlbumSearchResponseVo;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface SearchService {
     /**
@@ -32,4 +33,10 @@ public interface SearchService {
      * @return AlbumSearchResponseVo
      */
     AlbumSearchResponseVo search(AlbumIndexQuery albumIndexQuery) throws IOException;
+
+    /**
+     * 关键字补全
+     * @param keyword 关键字
+     */
+    Set<String> autoCompleteSuggest(String keyword) throws IOException;
 }
