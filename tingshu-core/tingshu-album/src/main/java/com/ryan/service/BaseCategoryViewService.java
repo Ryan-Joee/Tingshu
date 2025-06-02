@@ -16,5 +16,6 @@ import java.util.List;
  */
 public interface BaseCategoryViewService extends IService<BaseCategoryView> {
 
-    List<CategoryVo> getAllCategoryList();
+
+    List<CategoryVo> getAllCategoryList(Long category1Id);
 }
