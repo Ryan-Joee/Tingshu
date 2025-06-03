@@ -1,12 +1,15 @@
 package com.ryan.controller;
 
+import com.ryan.constant.RedisConstant;
 import com.ryan.query.AlbumIndexQuery;
 import com.ryan.result.RetVal;
 import com.ryan.service.SearchService;
+import com.ryan.vo.AlbumInfoIndexVo;
 import com.ryan.vo.AlbumSearchResponseVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -67,10 +70,25 @@ public class SearchController {
     /**以下内容属于专辑详情**/
     @Operation(summary = "获取专辑详情信息")
     @GetMapping("getAlbumDetail/{albumId}")
-    public RetVal<Map<String,Object>> getAlbumDetail(@PathVariable Long albumId){
+    public RetVal getAlbumDetail(@PathVariable Long albumId){
         Map<String,Object> result = searchService.getAlbumDetail(albumId);
         return RetVal.ok(result);
     }
 
+    @Operation(summary = "更新排行榜列表")
+    @GetMapping("updateRanking")
+    public RetVal updateRanking() throws IOException {
+        searchService.updateRanking();
+        return RetVal.ok();
+    }
+
+    @Autowired
+    private RedisTemplate redisTemplate;
+    @Operation(summary = "获取排行榜列表")
+    @GetMapping("getRankingList/{category1Id}/{rankingType}")
+    public RetVal<List<AlbumInfoIndexVo>> getRankingList(@PathVariable Long category1Id, @PathVariable String rankingType) {
+        List<AlbumInfoIndexVo> albumInfoIndexVoList=(List<AlbumInfoIndexVo>) redisTemplate.boundHashOps(RedisConstant.RANKING_KEY_PREFIX + category1Id).get(rankingType);
+        return RetVal.ok(albumInfoIndexVoList);
+    }
 
 }

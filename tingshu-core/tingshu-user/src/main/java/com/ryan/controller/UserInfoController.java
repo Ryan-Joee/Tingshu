@@ -1,6 +1,7 @@
 package com.ryan.controller;
 
 import com.ryan.entity.UserInfo;
+import com.ryan.login.TingshuLogin;
 import com.ryan.result.RetVal;
 import com.ryan.service.UserInfoService;
 import com.ryan.vo.UserInfoVo;
@@ -8,10 +9,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * <p>
@@ -38,6 +39,14 @@ public class UserInfoController {
             BeanUtils.copyProperties(userInfo, userInfoVo);
         }
         return RetVal.ok(userInfoVo);
+    }
+
+    @TingshuLogin
+    @Operation(summary = "获取用户是否需要购买的标识")
+    @PostMapping("getUserShowPaidMarkOrNot/{albumId}")
+    public RetVal<Map<Long, Boolean>> getUserShowPaidMarkOrNot(@PathVariable Long albumId, @RequestBody List<Long> needPayTrackIdList) {
+        Map<Long, Boolean> retMap = userInfoService.getUserShowPaidMarkOrNot(albumId, needPayTrackIdList);
+        return RetVal.ok(retMap);
     }
 
 }

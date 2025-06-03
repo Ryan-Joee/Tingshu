@@ -17,6 +17,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.ryan.AlbumFeignClient;
 import com.ryan.CategoryFeignClient;
 import com.ryan.UserFeignClient;
+import com.ryan.constant.RedisConstant;
 import com.ryan.entity.*;
 import com.ryan.exception.TingshuException;
 import com.ryan.query.AlbumIndexQuery;
@@ -32,6 +33,7 @@ import com.ryan.vo.UserInfoVo;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.elasticsearch.core.suggest.Completion;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
@@ -301,6 +303,40 @@ public class SearchServiceImpl implements SearchService {
         UserInfoVo userInfoVo = userFeignClient.getUserById(albumInfo.getUserId()).getData();
         retMap.put("announcer", userInfoVo);
         return retMap;
+    }
+
+    /**
+     * 更新排行榜列表
+     */
+    @Autowired
+    private RedisTemplate redisTemplate;
+    @Override
+    public void updateRanking() throws IOException {
+        //排行榜，按分类维度统计
+        List<BaseCategory1> category1List = categoryFeignClient.getCategory1().getData();
+        if (!CollectionUtils.isEmpty(category1List)) {
+            for (BaseCategory1 baseCategory1 : category1List) {
+                //统计维度：热度:hotScore、播放量:playStatNum、订阅量:subscribeStatNum、购买量:buyStatNum、评论数:albumCommentStatNum
+                String[] rankingTypeList = new String[]{"hotScore", "playStatNum", "subscribeStatNum", "buyStatNum", "commentStatNum"};
+                for (String rankingType : rankingTypeList) {
+                    SearchResponse<AlbumInfoIndex> response = elasticsearchClient.search(s -> s
+                            .index("albuminfo")
+                            .query(q->q.bool(b->b.filter(f->f.term(
+                                    t->t.field("category1Id").value(baseCategory1.getId())))))
+                            .size(10)
+                            .sort(t -> t.field(f -> f.field(rankingType).order(SortOrder.Desc))), AlbumInfoIndex.class);
+
+                    //解析查询列表
+                    List<AlbumInfoIndex> albumList = new ArrayList<>();
+                    response.hits().hits().stream().forEach(hit -> {
+                        AlbumInfoIndex album = hit.source();
+                        albumList.add(album);
+                    });
+                    //将排行榜数据记录redis
+                    redisTemplate.boundHashOps(RedisConstant.RANKING_KEY_PREFIX + baseCategory1.getId()).put(rankingType, albumList);
+                }
+            }
+        }
     }
 
     private Set<String> analysisResponse(SearchResponse response) {

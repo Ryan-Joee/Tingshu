@@ -14,6 +14,7 @@ import com.ryan.service.AlbumInfoService;
 import com.ryan.service.TrackInfoService;
 import com.ryan.service.VodService;
 import com.ryan.util.AuthContextHolder;
+import com.ryan.vo.AlbumTrackListVo;
 import com.ryan.vo.TrackTempVo;
 import com.tencentcloudapi.common.exception.TencentCloudSDKException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -124,5 +125,19 @@ public class TrackController {
         trackInfoService.deleteTrackInfo(trackId);
         return RetVal.ok();
     }
+
+    @TingshuLogin
+    @Operation(summary = "分页查询声音")
+    @GetMapping("getAlbumDetailTrackByPage/{albumId}/{pageNum}/{pageSize}")
+    public RetVal getAlbumDetailTrackByPage(
+            @PathVariable Long albumId,
+            @PathVariable Long pageNum,
+            @PathVariable Long pageSize
+    ) {
+        IPage<AlbumTrackListVo> pageParam = new Page<>(pageNum, pageSize);
+        pageParam = trackInfoService.getAlbumDetailTrackByPage(pageParam, albumId);
+        return RetVal.ok(pageParam);
+    }
+
 }
 

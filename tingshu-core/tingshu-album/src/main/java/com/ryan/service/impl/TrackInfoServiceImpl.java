@@ -1,24 +1,33 @@
 package com.ryan.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.ryan.UserFeignClient;
 import com.ryan.constant.SystemConstant;
 import com.ryan.entity.AlbumInfo;
 import com.ryan.entity.TrackInfo;
 import com.ryan.entity.TrackStat;
 import com.ryan.mapper.TrackInfoMapper;
+import com.ryan.result.RetVal;
 import com.ryan.service.AlbumInfoService;
 import com.ryan.service.TrackInfoService;
 import com.ryan.service.TrackStatService;
 import com.ryan.service.VodService;
 import com.ryan.util.AuthContextHolder;
+import com.ryan.vo.AlbumTrackListVo;
+import com.ryan.vo.UserInfoVo;
 import com.tencentcloudapi.common.exception.TencentCloudSDKException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * <p>
@@ -39,6 +48,9 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
 
     @Autowired
     private TrackStatService trackStatService;
+
+    @Autowired
+    private UserFeignClient userFeignClient;
 
     /**
      * 新增声音
@@ -103,6 +115,72 @@ public class TrackInfoServiceImpl extends ServiceImpl<TrackInfoMapper, TrackInfo
                 .eq(TrackStat::getTrackId, trackId));
         // 删除声音
         vodService.removeTrack(trackInfo.getMediaFileId());
+    }
+
+    /**
+     * 获取专辑声音详情
+     * @param pageParam 分页详情
+     * @param albumId 专辑id
+     * @return IPage<TrackTempVo>
+     */
+    @Override
+    public IPage<AlbumTrackListVo> getAlbumDetailTrackByPage(IPage<AlbumTrackListVo> pageParam, Long albumId) {
+        Long userId = AuthContextHolder.getUserId();
+        //获取专辑声音与专辑统计信息
+        pageParam = baseMapper.getAlbumTrackAndStatInfo(pageParam, albumId);
+        List<AlbumTrackListVo> albumTrackVoList = pageParam.getRecords();
+        AlbumInfo albumInfo = albumInfoService.getById(albumId);
+        //如果用户没有登录
+        if (null == userId) {
+            if (!SystemConstant.FREE_ALBUM.equals(albumInfo.getPayType())) {
+                //获取需要付费的声音列表
+                List<AlbumTrackListVo> albumTrackNeedPaidList = albumTrackVoList.stream()
+                        .filter(item -> item.getOrderNum().intValue() > albumInfo.getTracksForFree().intValue())
+                        .collect(Collectors.toList());
+                if (!CollectionUtils.isEmpty(albumTrackNeedPaidList)) {
+                    albumTrackNeedPaidList.forEach(item -> {
+                        item.setIsShowPaidMark(true);
+                    });
+                }
+            }
+        } else {
+            boolean isNeedPaid = false;
+            //vip免费
+            if (SystemConstant.VIPFREE_ALBUM.equals(albumInfo.getPayType())) {
+                UserInfoVo userInfoVo = userFeignClient.getUserById(userId).getData();//已写
+                //a.非VIP观看用户
+                if (userInfoVo.getIsVip().intValue() == 0) {
+                    isNeedPaid = true;
+                }
+                //b.如果是vip但是vip过期了（定时任务还为更新状态）
+                if (userInfoVo.getIsVip().intValue() == 1 && userInfoVo.getVipExpireTime().before(new Date())) {
+                    isNeedPaid = true;
+                }
+            } else if (SystemConstant.NEED_PAY_ALBUM.equals(albumInfo.getPayType())) {
+                //付费类型的专辑
+                isNeedPaid = true;
+            } else {
+                isNeedPaid = false;
+            }
+            //需要付费，判断用户是否购买过专辑或声音
+            if (isNeedPaid) {
+                //获取需要付费的声音列表 如果集数>5 前5集免费
+                List<AlbumTrackListVo> albumTrackNeedPaidList = albumTrackVoList.stream()
+                        .filter(item -> item.getOrderNum().intValue() > albumInfo.getTracksForFree().intValue())
+                        .collect(Collectors.toList());
+                if (!CollectionUtils.isEmpty(albumTrackNeedPaidList)) {
+                    //判断用户是否购买该声音
+                    List<Long> needPayTrackIdList = albumTrackNeedPaidList.stream().map(AlbumTrackListVo::getTrackId).collect(Collectors.toList());
+                    RetVal<Map<Long, Boolean>> mapRetVal = userFeignClient.getUserShowPaidMarkOrNot(albumId, needPayTrackIdList);
+                    Map<Long, Boolean> showPaidMarkMap = mapRetVal.getData();
+                    albumTrackNeedPaidList.forEach(item -> {
+                        //false不显示 true显示付费标识
+                        item.setIsShowPaidMark(showPaidMarkMap.get(item.getTrackId()));
+                    });
+                }
+            }
+        }
+        return pageParam;
     }
 
     // 初始化专辑的信息

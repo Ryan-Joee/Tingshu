@@ -1,5 +1,6 @@
 package com.ryan;
 
+import com.ryan.entity.BaseCategory1;
 import com.ryan.entity.BaseCategory3;
 import com.ryan.entity.BaseCategoryView;
 import com.ryan.result.RetVal;
@@ -17,4 +18,7 @@ public interface CategoryFeignClient {
 
     @GetMapping("/api/album/category/getCategory3ListByCategory1Id/{category1Id}")
     RetVal<List<BaseCategory3>> getCategory3ListByCategory1Id(@PathVariable Long category1Id);
+
+    @GetMapping("/api/album/category/getCategory1")
+    RetVal<List<BaseCategory1>> getCategory1();
 }

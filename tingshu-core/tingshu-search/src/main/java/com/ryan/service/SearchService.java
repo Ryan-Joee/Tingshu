@@ -47,4 +47,9 @@ public interface SearchService {
      * @return Map<String, Object>
      */
     Map<String, Object> getAlbumDetail(Long albumId);
+
+    /**
+     * 更新排行榜列表
+     */
+    void updateRanking() throws IOException;
 }

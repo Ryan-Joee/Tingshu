@@ -1,11 +1,14 @@
 package com.ryan.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.ryan.entity.BaseAttribute;
+import com.ryan.entity.BaseCategory1;
 import com.ryan.entity.BaseCategory3;
 import com.ryan.entity.BaseCategoryView;
 import com.ryan.login.TingshuLogin;
 import com.ryan.mapper.BaseAttributeMapper;
 import com.ryan.result.RetVal;
+import com.ryan.service.BaseCategory1Service;
 import com.ryan.service.BaseCategory3Service;
 import com.ryan.service.BaseCategoryViewService;
 import com.ryan.vo.CategoryVo;
@@ -80,5 +83,16 @@ public class CategoryController {
             return RetVal.ok(allCategoryList.get(0));
         }
         return RetVal.ok();
+    }
+
+    @Autowired
+    private BaseCategory1Service category1Service;
+    @Operation(summary = "查询所有的一级分类")
+    @GetMapping("getCategory1")
+    public RetVal<List<BaseCategory1>> getCategory1() {
+        LambdaQueryWrapper<BaseCategory1> wrapper = new LambdaQueryWrapper<>();
+        wrapper.orderByAsc(BaseCategory1::getOrderNum);
+        List<BaseCategory1> category1List = category1Service.list(wrapper);
+        return RetVal.ok(category1List);
     }
 }

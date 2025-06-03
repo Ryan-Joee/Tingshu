@@ -1,7 +1,9 @@
 package com.ryan.service;
 
-import com.ryan.entity.TrackInfo;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.ryan.entity.TrackInfo;
+import com.ryan.vo.AlbumTrackListVo;
 import com.tencentcloudapi.common.exception.TencentCloudSDKException;
 
 /**
@@ -31,4 +33,12 @@ public interface TrackInfoService extends IService<TrackInfo> {
      * @param trackId 声音id
      */
     void deleteTrackInfo(Long trackId) throws TencentCloudSDKException;
+
+    /**
+     * 获取专辑声音详情
+     * @param pageParam 分页详情
+     * @param albumId 专辑id
+     * @return IPage<TrackTempVo>
+     */
+    IPage<AlbumTrackListVo> getAlbumDetailTrackByPage(IPage<AlbumTrackListVo> pageParam, Long albumId);
 }
