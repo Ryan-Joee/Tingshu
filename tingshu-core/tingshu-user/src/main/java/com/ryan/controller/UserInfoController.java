@@ -39,4 +39,5 @@ public class UserInfoController {
         }
         return RetVal.ok(userInfoVo);
     }
+
 }

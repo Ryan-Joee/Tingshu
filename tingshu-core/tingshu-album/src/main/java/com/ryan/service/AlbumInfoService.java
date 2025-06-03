@@ -25,4 +25,6 @@ public interface AlbumInfoService extends IService<AlbumInfo> {
     // 删除专辑信息
     void deleteAlbumInfo(Long albumId);
 
+    // 是否订阅
+    boolean isSubscribe(Long albumId);
 }

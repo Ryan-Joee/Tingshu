@@ -2,6 +2,8 @@ package com.ryan.mapper;
 
 import com.ryan.entity.AlbumStat;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.ryan.vo.AlbumStatVo;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * <p>
@@ -13,4 +15,10 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
  */
 public interface AlbumStatMapper extends BaseMapper<AlbumStat> {
 
+    /**
+     * 获取专辑统计信息
+     * @param albumId 专辑id
+     * @return AlbumSateVo
+     */
+    AlbumStatVo getAlbumStatInfo(@Param("albumId") Long albumId);
 }

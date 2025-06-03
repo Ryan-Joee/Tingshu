@@ -58,9 +58,18 @@ public class SearchController {
 
     @Operation(summary = "关键字补全")
     @GetMapping("autoCompleteSuggest/{keyword}")
-    public RetVal autoCompleteSuggest(@PathVariable String keyword) throws IOException {
+    public RetVal<Set<String>> autoCompleteSuggest(@PathVariable String keyword) throws IOException {
         Set<String> suggestSet = searchService.autoCompleteSuggest(keyword);
         return RetVal.ok(suggestSet);
+    }
+
+    // http://127.0.0.1/api/search/albumInfo/getAlbumDetail/1255
+    /**以下内容属于专辑详情**/
+    @Operation(summary = "获取专辑详情信息")
+    @GetMapping("getAlbumDetail/{albumId}")
+    public RetVal<Map<String,Object>> getAlbumDetail(@PathVariable Long albumId){
+        Map<String,Object> result = searchService.getAlbumDetail(albumId);
+        return RetVal.ok(result);
     }
 
 

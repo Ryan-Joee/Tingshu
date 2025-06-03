@@ -3,6 +3,7 @@ package com.ryan;
 import com.ryan.entity.AlbumAttributeValue;
 import com.ryan.entity.AlbumInfo;
 import com.ryan.result.RetVal;
+import com.ryan.vo.AlbumStatVo;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,4 +19,6 @@ public interface AlbumFeignClient {
     @GetMapping("/api/album/albumInfo/getAlbumInfoPropertyValue/{albumId}")
     List<AlbumAttributeValue> getAlbumInfoPropertyValue(@PathVariable Long albumId);
 
+    @GetMapping("/api/album/albumInfo/getAlbumStatInfo/{albumId}")
+    RetVal<AlbumStatVo> getAlbumStatInfo(@PathVariable Long albumId);
 }

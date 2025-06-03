@@ -39,4 +39,12 @@ public interface SearchService {
      * @param keyword 关键字
      */
     Set<String> autoCompleteSuggest(String keyword) throws IOException;
+
+    /**
+     * 获取专辑详情信息
+     *
+     * @param albumId 专辑id
+     * @return Map<String, Object>
+     */
+    Map<String, Object> getAlbumDetail(Long albumId);
 }

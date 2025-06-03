@@ -8,11 +8,13 @@ import com.ryan.entity.AlbumAttributeValue;
 import com.ryan.entity.AlbumInfo;
 import com.ryan.login.TingshuLogin;
 import com.ryan.mapper.AlbumInfoMapper;
+import com.ryan.mapper.AlbumStatMapper;
 import com.ryan.query.AlbumInfoQuery;
 import com.ryan.result.RetVal;
 import com.ryan.service.AlbumAttributeValueService;
 import com.ryan.service.AlbumInfoService;
 import com.ryan.util.AuthContextHolder;
+import com.ryan.vo.AlbumStatVo;
 import com.ryan.vo.AlbumTempVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -109,6 +111,27 @@ public class AlbumController {
         List<AlbumAttributeValue> attributeValueList = albumAttributeValueService.list(wrapper);
         return attributeValueList;
     }
+
+    @Autowired
+    private AlbumStatMapper albumStatMapper;
+
+    /** 以下内容属于专辑详情模块 **/
+    @Operation(summary = "获取专辑统计信息")
+    @GetMapping("getAlbumStatInfo/{albumId}")
+    public RetVal<AlbumStatVo> getAlbumStatInfo(@PathVariable Long albumId) {
+        AlbumStatVo albumStatVo=albumStatMapper.getAlbumStatInfo(albumId);
+        return RetVal.ok(albumStatVo);
+    }
+
+    // http://127.0.0.1/api/album/albumInfo/isSubscribe/1611
+    @TingshuLogin
+    @Operation(summary = "是否订阅")
+    @GetMapping("isSubscribe/{albumId}")
+    public RetVal isSubscribe(@PathVariable Long albumId) {
+        boolean flag = albumInfoService.isSubscribe(albumId);
+        return RetVal.ok(flag);
+    }
+
 
 }
 

@@ -16,12 +16,16 @@ import com.ryan.service.AlbumInfoService;
 import com.ryan.service.AlbumStatService;
 import com.ryan.service.KafkaService;
 import com.ryan.util.AuthContextHolder;
+import com.ryan.util.MongoUtil;
 import com.ryan.util.SleepUtils;
 import org.jetbrains.annotations.NotNull;
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
@@ -259,6 +263,18 @@ public class AlbumInfoServiceImpl extends ServiceImpl<AlbumInfoMapper, AlbumInfo
 //        searchFeignClient.offSaleAlbum(albumId);
         kafkaService.sendMessage(KafkaConstant.OFFSALE_ALBUM_QUEUE, String.valueOf(albumId));
 
+    }
+
+    // 是否订阅
+    @Autowired
+    private MongoTemplate mongoTemplate;
+    @Override
+    public boolean isSubscribe(Long albumId) {
+        Long userId = AuthContextHolder.getUserId();
+        Query query = Query.query(Criteria.where("userId").is(userId).and("albumId").is(albumId));
+        long count = mongoTemplate.count(query, MongoUtil.getCollectionName(MongoUtil.MongoCollectionEnum.USER_SUBSCRIBE, userId));
+        if (count > 0) return true;
+        return false;
     }
 
 

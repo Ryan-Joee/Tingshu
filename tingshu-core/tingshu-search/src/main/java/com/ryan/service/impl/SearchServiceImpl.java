@@ -27,6 +27,7 @@ import com.ryan.service.SearchService;
 import com.ryan.util.PinYinUtils;
 import com.ryan.vo.AlbumInfoIndexVo;
 import com.ryan.vo.AlbumSearchResponseVo;
+import com.ryan.vo.AlbumStatVo;
 import com.ryan.vo.UserInfoVo;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,7 @@ import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.stream.Collectors;
 
 @Service
@@ -243,6 +245,62 @@ public class SearchServiceImpl implements SearchService {
             }
         }
         return suggestTitleList;
+    }
+
+    @Autowired
+    private ThreadPoolExecutor myPoolExecutor;
+    /**
+     * 获取专辑详情信息
+     *
+     * @param albumId 专辑id
+     * @return Map<String, Object>
+     */
+    @Override
+  /*  public Map<String, Object> getAlbumDetail(Long albumId) {
+        Map<String, Object> result = new HashMap<>();
+        CompletableFuture<Void> albumStatFuture = CompletableFuture.runAsync(() -> {
+            RetVal<AlbumStatVo> albumStatVoRetVal = albumFeignClient.getAlbumStatInfo(albumId);//未写
+            AlbumStatVo albumStatVo = albumStatVoRetVal.getData();
+            result.put("albumStatVo", albumStatVo);
+        }, myPoolExecutor);
+
+        CompletableFuture<AlbumInfo> albumFuture = CompletableFuture.supplyAsync(() -> {
+            AlbumInfo albumInfo = albumFeignClient.getAlbumInfoById(albumId).getData();//已写
+            result.put("albumInfo", albumInfo);
+            return albumInfo;
+        }, myPoolExecutor);
+
+        CompletableFuture<Void> categoryViewFuture = albumFuture.thenAcceptAsync(albumInfo -> {
+            BaseCategoryView baseCategoryView = categoryFeignClient.getCategoryView(albumInfo.getCategory3Id());//已写
+            result.put("baseCategoryView", baseCategoryView);
+        }, myPoolExecutor);
+
+        CompletableFuture<Void> announcerFuture = albumFuture.thenAcceptAsync(albumInfo -> {
+            UserInfoVo userInfoVo = userFeignClient.getUserById(albumInfo.getUserId()).getData();//已写
+            result.put("announcer", userInfoVo);
+        }, myPoolExecutor);
+
+        CompletableFuture.allOf(albumFuture,
+                albumStatFuture,
+                categoryViewFuture,
+                announcerFuture).join();
+        return result;
+    }*/
+    public Map<String, Object> getAlbumDetail(Long albumId) {
+        Map<String, Object> retMap = new HashMap<>();
+        // 1. 专辑基本信息
+        AlbumInfo albumInfo = albumFeignClient.getAlbumInfoById(albumId).getData();
+        retMap.put("albumInfo", albumInfo);
+        // 2. 专辑统计信息
+        AlbumStatVo albumStatVo = albumFeignClient.getAlbumStatInfo(albumId).getData();
+        retMap.put("albumStatVo", albumStatVo);
+        // 3. 专辑分类信息
+        BaseCategoryView categoryView = categoryFeignClient.getCategoryView(albumInfo.getCategory3Id());
+        retMap.put("baseCategoryView", categoryView);
+        // 4. 用户基本信息
+        UserInfoVo userInfoVo = userFeignClient.getUserById(albumInfo.getUserId()).getData();
+        retMap.put("announcer", userInfoVo);
+        return retMap;
     }
 
     private Set<String> analysisResponse(SearchResponse response) {
