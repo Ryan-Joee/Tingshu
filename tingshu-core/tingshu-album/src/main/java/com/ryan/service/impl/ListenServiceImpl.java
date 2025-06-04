@@ -3,6 +3,7 @@ package com.ryan.service.impl;
 import com.alibaba.fastjson.JSON;
 import com.ryan.constant.KafkaConstant;
 import com.ryan.constant.SystemConstant;
+import com.ryan.entity.UserCollect;
 import com.ryan.entity.UserListenProcess;
 import com.ryan.service.KafkaService;
 import com.ryan.service.ListenService;
@@ -14,15 +15,19 @@ import org.bson.types.ObjectId;
 import org.joda.time.DateTime;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -81,7 +86,63 @@ public class ListenServiceImpl implements ListenService {
     }
 
     @Override
-    public void getRecentlyPlay() {
+    public BigDecimal getLastPlaySecond(Long trackId) {
+        Long userId = AuthContextHolder.getUserId();
+        Query query = Query.query(Criteria.where("userId").is(userId).and("trackId").is(trackId));
+        UserListenProcess userListenProcess = mongoTemplate.findOne(query, UserListenProcess.class,
+                MongoUtil.getCollectionName(MongoUtil.MongoCollectionEnum.USER_LISTEN_PROCESS, userId));
+        if(null != userListenProcess) return userListenProcess.getBreakSecond();
+        return new BigDecimal(0);
+    }
 
+    @Override
+    public Map<String, Object> getRecentlyPlay() {
+        Long userId = AuthContextHolder.getUserId();
+        Query query = Query.query(Criteria.where("userId").is(userId));
+        Sort sort = Sort.by(Sort.Direction.DESC, "updateTime");
+        query.with(sort);
+        UserListenProcess userListenProcess = mongoTemplate.findOne(query, UserListenProcess.class, MongoUtil.getCollectionName(MongoUtil.MongoCollectionEnum.USER_LISTEN_PROCESS, userId));
+        if(null == userListenProcess) {
+            return null;
+        }
+        Map<String, Object> map = new HashMap<>();
+        map.put("albumId", userListenProcess.getAlbumId());
+        map.put("trackId", userListenProcess.getTrackId());
+        return map;
+    }
+
+    @Override
+    public boolean collectTrack(Long trackId) {
+        Long userId = AuthContextHolder.getUserId();
+        Query query = Query.query(Criteria.where("userId").is(userId).and("trackId").is(trackId));
+        long count = mongoTemplate.count(query, MongoUtil.getCollectionName(MongoUtil.MongoCollectionEnum.USER_COLLECT, userId));
+        if(count == 0) {
+            //在mongodb中添加用户收藏的信息
+            UserCollect userCollect = new UserCollect();
+            userCollect.setId(ObjectId.get().toString());
+            userCollect.setUserId(userId);
+            userCollect.setTrackId(trackId);
+            userCollect.setCreateTime(new Date());
+            mongoTemplate.save(userCollect, MongoUtil.getCollectionName(MongoUtil.MongoCollectionEnum.USER_COLLECT, userId));
+
+            //发送消息，更新声音统计数量加1
+            TrackStatMqVo trackStatMqVo = new TrackStatMqVo();
+            trackStatMqVo.setBusinessNo(UUID.randomUUID().toString().replaceAll("-",""));
+            trackStatMqVo.setTarckId(trackId);
+            trackStatMqVo.setStatType(SystemConstant.COLLECT_NUM_TRACK);
+            trackStatMqVo.setCount(1);
+            kafkaService.sendMessage(KafkaConstant.UPDATE_TRACK_STAT_QUEUE, JSON.toJSONString(trackStatMqVo));
+            return true;
+        } else {
+            mongoTemplate.remove(query, MongoUtil.getCollectionName(MongoUtil.MongoCollectionEnum.USER_COLLECT, userId));
+            //发送消息，更新声音统计数量减1
+            TrackStatMqVo trackStatMqVo = new TrackStatMqVo();
+            trackStatMqVo.setBusinessNo(UUID.randomUUID().toString().replaceAll("-",""));
+            trackStatMqVo.setTarckId(trackId);
+            trackStatMqVo.setStatType(SystemConstant.COLLECT_NUM_TRACK);
+            trackStatMqVo.setCount(-1);
+            kafkaService.sendMessage(KafkaConstant.UPDATE_TRACK_STAT_QUEUE, JSON.toJSONString(trackStatMqVo));
+            return false;
+        }
     }
 }

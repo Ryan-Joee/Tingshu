@@ -5,8 +5,9 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.ryan.entity.TrackInfo;
 import com.ryan.query.TrackInfoQuery;
 import com.ryan.vo.AlbumTrackListVo;
+import com.ryan.vo.TrackStatVo;
 import com.ryan.vo.TrackTempVo;
-import feign.Param;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * <p>
@@ -28,4 +29,6 @@ public interface TrackInfoMapper extends BaseMapper<TrackInfo> {
                                          @Param("trackInfoQuery") TrackInfoQuery trackInfoQuery);
 
     IPage<AlbumTrackListVo> getAlbumTrackAndStatInfo(IPage<AlbumTrackListVo> pageParam, Long albumId);
+
+    TrackStatVo getTrackStatistics(@Param("trackId") Long trackId);
 }
