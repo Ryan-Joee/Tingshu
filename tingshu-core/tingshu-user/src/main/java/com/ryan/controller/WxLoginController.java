@@ -81,9 +81,11 @@ public class WxLoginController {
         }
         // 然后往redis中存储用户信息
         String uuid = UUID.randomUUID().toString().replace("-", "");
+        String refreshUuid = UUID.randomUUID().toString().replaceAll("-", "");
         String userKey = RedisConstant.USER_LOGIN_KEY_PREFIX + uuid;
         redisTemplate.opsForValue()
                 .set(userKey, userInfo, RedisConstant.USER_LOGIN_KEY_TIMEOUT, TimeUnit.SECONDS);
+        redisTemplate.opsForValue().set(RedisConstant.USER_LOGIN_REFRESH_KEY_PREFIX+refreshUuid, userInfo.getId(), RedisConstant.USER_LOGIN_REFRESH_KEY_TIMEOUT, TimeUnit.SECONDS);
         Map<String, Object> retMap = new HashMap<>();
         retMap.put("token", uuid);
         return RetVal.ok(retMap);
