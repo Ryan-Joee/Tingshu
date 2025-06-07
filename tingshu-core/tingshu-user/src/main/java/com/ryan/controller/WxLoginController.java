@@ -3,10 +3,12 @@ package com.ryan.controller;
 import cn.binarywang.wx.miniapp.api.WxMaService;
 import cn.binarywang.wx.miniapp.bean.WxMaJscode2SessionResult;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.ryan.constant.KafkaConstant;
 import com.ryan.constant.RedisConstant;
 import com.ryan.entity.UserInfo;
 import com.ryan.login.TingshuLogin;
 import com.ryan.result.RetVal;
+import com.ryan.service.KafkaService;
 import com.ryan.service.UserInfoService;
 import com.ryan.util.AuthContextHolder;
 import com.ryan.vo.UserInfoVo;
@@ -48,6 +50,9 @@ public class WxLoginController {
     @Autowired
     private RedisTemplate redisTemplate;
 
+    @Autowired
+    private KafkaService kafkaService;
+
     @Operation(summary = "小程序授权登录")
     @GetMapping("wxLogin/{code}")
     public RetVal wxLogin(@PathVariable String code) throws Exception {
@@ -71,6 +76,8 @@ public class WxLoginController {
              // 是否为会员：默认不是vip
              userInfo.setIsVip(0);
              userInfoService.save(userInfo);
+            //注册成功，初始化用户账户
+            kafkaService.sendMessage(KafkaConstant.USER_REGISTER_QUEUE, userInfo.getId()+"");
         }
         // 然后往redis中存储用户信息
         String uuid = UUID.randomUUID().toString().replace("-", "");
